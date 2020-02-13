@@ -3,6 +3,7 @@ extern crate rand;
 use rand::seq::SliceRandom;
 
 use std::f32;
+use std::io::{self, BufRead};
 
 use rayon::prelude::*;
 use rand::Rng;
@@ -177,31 +178,31 @@ impl Node {
     }
 
     pub fn best(&self) -> (u32, u32) {
-        for y in 0..12 {
-            for x in 0..12 {
-                let mut value = 0;
-                for node in self.nodes.iter() {
-                    if node.x == x && node.y == y {
-                        value = node.plays;
-                    }
-                }
-                print!("{:>7} ", value);
-            }
-            println!("");
-        }
-
-        for y in 0..12 {
-            for x in 0..12 {
-                let mut value = 0.0;
-                for node in self.nodes.iter() {
-                    if node.x == x && node.y == y {
-                        value = node.wins as f32 / node.plays as f32;
-                    }
-                }
-                print!("{:.5} ", value);
-            }
-            println!("");
-        }
+//         for y in 0..19 {
+//             for x in 0..19 {
+//                 let mut value = 0;
+//                 for node in self.nodes.iter() {
+//                     if node.x == x && node.y == y {
+//                         value = node.plays;
+//                     }
+//                 }
+//                 print!("{:>7} ", value);
+//             }
+//             println!("");
+//         }
+//
+//         for y in 0..19 {
+//             for x in 0..19 {
+//                 let mut value = 0.0;
+//                 for node in self.nodes.iter() {
+//                     if node.x == x && node.y == y {
+//                         value = node.wins as f32 / node.plays as f32;
+//                     }
+//                 }
+//                 print!("{:.5} ", value);
+//             }
+//             println!("");
+//         }
 
         let mut best: f32 = 0.0;
         let mut best_x = 0;
@@ -236,8 +237,8 @@ impl Board {
     }
 
     pub fn would_play_here(&self, x: i32, y: i32) -> bool {
-        for cur_x in -1..2 {
-            for cur_y in -1..2 {
+        for cur_x in -2..3 {
+            for cur_y in -2..3 {
 //                 println!("HMM {} {}", cur_x, cur_y);
                 if self.played_at(x + cur_x, y + cur_y) {
 //                     println!("Returning true");
@@ -274,6 +275,24 @@ impl Board {
         self.last_play_position = (x, y);
     }
 
+    pub fn display_simple(&self) {
+        for y in 0..self.shape {
+            for x in 0..self.shape {
+                let value = self.get_at(x, y);
+                if value == 0 {
+                    print!(" ")
+                }
+                if value == -1 {
+                    print!("x")
+                }
+                if value == 1 {
+                    print!("o")
+                }
+            }
+            println!("");
+        }
+    }
+
     pub fn display(&self) {
         print!("o");
         for i in 0..(self.shape * 2 + 2) {
@@ -297,10 +316,10 @@ impl Board {
                 }
                 if self.last_play_position == (x, y) {
                     if value == -1 {
-                        print!("\x1b[0;31mX\x1b[0m")
+                        print!("\x1b[0;32mX\x1b[0m")
                     }
                     if value == 1 {
-                        print!("\x1b[0;34mO\x1b[0m")
+                        print!("\x1b[0;32mO\x1b[0m")
                     }
                 } else {
                     if value == -1 {
@@ -482,24 +501,70 @@ impl Board {
     }
 }
 
-fn main() {
-    println!("Hello, world!");
+fn human_coords() -> (u32, u32) {
+    println!("X coordinate: ");
+    let mut line = String::new();
+    let stdin = io::stdin();
+    stdin.lock().read_line(&mut line).unwrap();
+    println!("Got {}", line.trim());
+    let player_x_coord = line.trim().parse::<u32>().unwrap();
 
+    println!("Y coordinate: ");
+    let mut line = String::new();
+    let stdin = io::stdin();
+    stdin.lock().read_line(&mut line).unwrap();
+    println!("Got {}", line.trim());
+    let player_y_coord = line.trim().parse::<u32>().unwrap();
+
+    (player_x_coord, player_y_coord)
+}
+
+fn human_play() {
+    let mut board = Board::new(19);
+    board.play_at(9, 9, 1);
+    let mut player = 1;
+    board.display();
+    while !board.done {
+        let (mut x, mut y) = human_coords();
+        while board.played_at(x as i32, y as i32) {
+            println!("Already player there");
+            let thing = human_coords();
+            x = thing.0;
+            y = thing.1;
+        }
+        board.play_at(x, y, -1);
+
+        board.display();
+        println!("Player {}", player);
+        println!("Thinking...");
+        let (x, y) = board.play_monte_carlo(player);
+        board.display();
+
+        println!("Play at {} {}", x, y);
+    }
+    board.display();
+}
+
+fn bot_play() {
     loop {
         let mut board = Board::new(19);
         board.play_at(9, 9, 1);
         let mut player = -1;
         while !board.done {
             println!("Player {}", player);
-            board.display();
+            board.display_simple();
             let (x, y) = board.play_monte_carlo(player);
 
             println!("Play at {} {}", x, y);
 
             player *= -1;
         }
-        board.display();
-
-        break;
+        board.display_simple();
     }
+}
+
+fn main() {
+    println!("Hello, world!");
+//     human_play();
+    bot_play();
 }
